@@ -70,9 +70,7 @@ The project leveraged several tools for efficient database management, query dev
 
 This analysis is based on an SQL query designed to identify high-value skills for Data Analyst roles by assessing two key metrics: average salary and salary stability. The query performs the following steps:
 * **Salary Cleaning (salary_cleaned CTE):** It standardizes all reported salaries by converting hourly rates to annual salaries (multiplying by 2080 working hours) and filters the data specifically for job postings with the title *'Data Analyst'* that include salary information.
-
 * **Skill Variance Calculation (skill_salary_variance CTE):** It calculates the *Average Salary* and *Standard Deviation* for each skill. This step only includes skills associated with more than 20 job postings , ensuring a statistically relevant sample size.
-
 * **Risk Ratio Determination (Final SELECT):** The final output introduces the Risk Ratio Risk = Avg Salary / STDDEV. This metric quantifies salary stability: a higher Risk Ratio indicates lower salary variance relative to the average, suggesting the skill offers a more stable and predictable income.
 
 ``` sql
@@ -173,7 +171,7 @@ The analysis of the top-paying remote Data Analyst jobs reveals a high-stakes ma
 * **Top Companies:** Meta ($336.5K) and AT&T ($255.8K) lead the market among large corporations, while Mantys presents an extreme outlier with a $650K salary.
 
 
-![Top Salary Outlier](assets\query1_graphg.png)
+![Top Salary Outlier](assets/query1_graphg.png)
 *Bar chart visualizing the top 10 Data Analyst salaries, generated using Gemini from the results of a SQL query.*
 
 ### 3. Skills for Top Paying Jobs 
@@ -221,7 +219,7 @@ ORDER BY tpj.salary_year_avg DESC
 **Conclusion:** 
 Top-paying jobs require SQL + Python + BI tools + Cloud/big data experience.
 
-![Most In-Demand Skills](assets\query2_gpt.jpg)
+![Most In-Demand Skills](assets/query2_gpt.jpg)
 *Most In-Demand Skills in the Top-Paying Remote Data Analyst / Business Analyst Jobs (>$200K)*
 
 ### 4. In-Demand Skills for Data Analysts
@@ -341,7 +339,7 @@ Here's a breakdown and recommendation based on your SQL query and results:
 🔍 Query Definition
 This query identifies the top skills for remote Data Analyst and Business Analyst roles, filtering for those with at least 21 postings and available salary data, and orders them by the highest average salary and then by demand count.
 
-![Dual-axis chart for remote Data Analyst skills](assets\query5_chart.png)
+![Dual-axis chart for remote Data Analyst skills](assets/query5_chart.png)
 *Dual-axis chart for remote Data Analyst skills. Snowflake (highest salary, $112K) and SQL (highest demand, 440 jobs) are key findings.*
 
 📊 **Breakdown of Results**
