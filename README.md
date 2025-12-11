@@ -1,29 +1,52 @@
 # Introduction
- This project conducts an **SQL-based market analysis of Data Analyst job postings**.
 
-The core goal is to provide **clear, actionable insights** into the current job landscape by answering five key questions about:
-* Top-paying salaries
-* In-demand skills
-* The optimal skill set for career growth
+ This project is a deep dive into the current job market to identify the most financially rewarding and strategically important skills for Data Analyst and Business Analyst roles.
 
-The analysis focuses specifically on **remote Data Analyst roles** to understand the high-growth, flexible segment of the modern job market.
+ The goal of this analysis is to move beyond simple job counts and understand which skills offer both high compensation and low risk, which roles provide the best salary opportunities, and how the broader market behaves across remote and senior-level positions.
+
+ Through a series of SQL queries, the project identifies:
+
+* Skills with the most predictable and stable salary ranges
+
+* The highest-paying Data Analyst and Business Analyst roles
+
+* Skill requirements behind top-compensated positions
+
+* The most demanded core skills in the job market
+
+* High-paying but niche technical skills
+
+* The optimal skills to learn based on both salary and demand
+
+
+This repository provides a data-driven, evidence-based overview of the current analytics job landscape — useful for analysts, students, and career-focused professionals who want to understand where to invest their learning time for maximum impact.
+
 SQL queries? Check them out
 here: [project_sql folder](/project_sql/)
 
 # Background
-### **Project Goals & Analytical Questions**
 
-The primary motivation for this project was to provide a data-driven guide for career advancement and skill development in the Data Analyst field. This analysis was structured around answering the following five key business questions using SQL:
+The modern **Data Analyst** job market is shaped by rapid changes in technology, the rise of cloud platforms, increasing automation, and the growing importance of data in strategic decision-making. Employers now expect analysts to combine traditional analytical skills with **programming**, **data engineering concepts**, and **business intelligence tools**. As a result, not all skills provide the same career value — some are widely demanded but offer broad salary ranges, while others are niche but highly paid and more stable.
 
-1.  **What are the top-paying Data Analyst jobs?** (Focus on remote roles with specified salaries)
-2.  **What skills are required for these top-paying jobs?** (Identifying the tech stack of high-value roles)
-3.  **What skills are most in demand for Data Analysts?** (Counting the frequency of skills in job postings)
-4.  **Which skills are associated with higher salaries?** (Calculating the average salary per skill)
-5.  **What are the most optimal skills to learn?** (Balancing high demand with high salary)
+To understand these dynamics, this project analyzes a comprehensive dataset of job postings that includes salary information, skill requirements, company attributes, and job categories. Using **SQL**, the analysis examines both the supply side (number of postings requiring each skill) and the compensation side (salary averages, standard deviations, and stability metrics).
+
+Several core questions guide the project:
+
+* Which skills consistently appear in the highest number of job postings?
+
+* Do the most demanded skills also provide the highest salary stability?
+
+* What skills are required for elite, top-paying remote roles?
+
+* Which niche technical skills offer exceptional salaries despite lower demand?
+
+* Which combination of demand, salary, and stability defines the most optimal skill set?
+
+By structuring the dataset with CTEs and targeted filtering, the project isolates salary-cleaned records, identifies high-paying positions, and measures salary variance for each skill. This creates a clearer picture of how skill choice affects earnings potential and career risk.
 
 ---
 
-### **Data Source & Credits**
+#### **Data Source & Credits**
 
 The data used for this analysis was sourced from a comprehensive job posting dataset, providing realistic and up-to-date market information.
 
@@ -42,7 +65,81 @@ The project leveraged several tools for efficient database management, query dev
 
 
 # The Analysis
-### 1. Top Paying Data Analyst Jobs
+
+### 1. Skill Demand and Salary Risk Analysis
+
+This analysis is based on an SQL query designed to identify high-value skills for Data Analyst roles by assessing two key metrics: average salary and salary stability. The query performs the following steps:
+* **Salary Cleaning (salary_cleaned CTE):** It standardizes all reported salaries by converting hourly rates to annual salaries (multiplying by 2080 working hours) and filters the data specifically for job postings with the title *'Data Analyst'* that include salary information.
+
+* **Skill Variance Calculation (skill_salary_variance CTE):** It calculates the *Average Salary* and *Standard Deviation* for each skill. This step only includes skills associated with more than 20 job postings , ensuring a statistically relevant sample size.
+
+* **Risk Ratio Determination (Final SELECT):** The final output introduces the Risk Ratio Risk = Avg Salary / STDDEV. This metric quantifies salary stability: a higher Risk Ratio indicates lower salary variance relative to the average, suggesting the skill offers a more stable and predictable income.
+
+``` sql
+WITH salary_cleaned AS (
+    SELECT
+        job_id,
+        job_title,
+        CASE
+            WHEN salary_rate = 'hour' THEN (salary_hour_avg*2080)
+            WHEN salary_rate = 'year' THEN salary_year_avg
+        END AS yearly_salary
+    FROM
+        job_postings_fact              
+    WHERE 
+        (salary_year_avg IS NOT NULL OR salary_hour_avg IS NOT NULL) 
+        AND job_title_short = 'Data Analyst'
+),
+skill_salary_variance AS (
+    SELECT
+        sd.skills AS skill_name,
+        COUNT(sc.job_id) AS job_count,
+        ROUND(AVG(sc.yearly_salary)) AS avg_salary,
+        ROUND(STDDEV(sc.yearly_salary)) AS std_dev -- standart deviation
+    FROM salary_cleaned sc
+        INNER JOIN skills_job_dim sjd ON sc.job_id = sjd.job_id
+        INNER JOIN skills_dim sd ON sjd.skill_id = sd.skill_id
+    GROUP BY 
+        sd.skills
+    HAVING
+        COUNT(sc.job_id) > 20
+)
+SELECT 
+    skill_name,
+    job_count,
+    avg_salary,
+    std_dev,
+    ROUND((avg_salary/std_dev),2) AS risk 
+FROM 
+    skill_salary_variance
+ORDER BY 
+    risk DESC
+```
+
+#### Breakdown and Overview
+The analysis is presented in two main tables:
+* **Risk Ratio Ranking:** This table ranks skills by their Risk Ratio (Average Salary / Standard Deviation), highlighting skills with the most predictable and stable salaries, such as SSRS and C#. These are considered the most stable skills regardless of job volume.
+* **Job Count Ranking:** This table ranks skills by the absolute volume of job postings, identifying the most widely sought-after skills, like SQL, Excel, and Python. While highly demanded, these skills generally exhibit a wider salary range, reflecting lower stability compared to specialized skills.
+
+----
+
+This table shows the most frequently advertised skills, indicating broad market demand. While essential, these skills often have a lower Risk Ratio due to the wide range of salaries they command in the market.
+
+| Skill      | Avg Salary ($) | Std Dev ($) | Job Count | Risk Ratio |
+| ---------- | -------------- | ----------- | --------- | ---------- |
+| SQL        | 92,643         | 34,804      | 5,012     | 2.66       |
+| Excel      | 80,624         | 31,730      | 3,837     | 2.54       |
+| Python     | 95,143         | 36,994      | 2,760     | 2.57       |
+| Tableau    | 93,141         | 37,607      | 2,721     | 2.48       |
+| SAS        | 86,648         | 33,050      | 1,656     | 2.62       |
+| Power BI   | 87,822         | 32,528      | 1,620     | 2.70       |
+
+
+ *High-Volume Skills (Based on Job Count)*
+
+---
+
+### 2. Top Paying Data Analyst Jobs
 To identify the highest-paying roles, I filtered
 data analyst positions by average yearly salary
 and focusing on remote jobs. This query
@@ -79,7 +176,7 @@ The analysis of the top-paying remote Data Analyst jobs reveals a high-stakes ma
 ![Top Salary Outlier](assets\query1_graphg.png)
 *Bar chart visualizing the top 10 Data Analyst salaries, generated using Gemini from the results of a SQL query.*
 
-### 2. Skills for Top Paying Jobs 
+### 3. Skills for Top Paying Jobs 
 This SQL query retrieves the top 10 highest-paying, remote Data or Business Analyst jobs and then lists the specific skills required for each of them.
 
 🔍 Overview
@@ -127,7 +224,7 @@ Top-paying jobs require SQL + Python + BI tools + Cloud/big data experience.
 ![Most In-Demand Skills](assets\query2_gpt.jpg)
 *Most In-Demand Skills in the Top-Paying Remote Data Analyst / Business Analyst Jobs (>$200K)*
 
-### 3. In-Demand Skills for Data Analysts
+### 4. In-Demand Skills for Data Analysts
 
 This query identifies the top 5 most in-demand skills for Data Analyst jobs by counting the frequency of each skill mentioned in job postings.
 
@@ -155,9 +252,10 @@ LIMIT 5;
 | Python   | 57326        |
 | Tableau  | 465554       |
 | Power BI | 39468        |
+
 *Table of the demand for the top 5 skills in data analyst job postings*
 
-### 4. Skills Based on Salary
+### 5. Skills Based on Salary
 This query calculates and ranks the **average annual salary** associated with different **skills** for **remote Data Analyst** positions.
 
 ```sql
@@ -213,7 +311,7 @@ Based on the provided list of top-paying skills for data analysts, here are thre
 
 *Table of the average salary for the top 10 paying skills for data analysts*
 
-### 5. Most Optimal Skills to Learn
+### 6. Most Optimal Skills to Learn
 This query identifies the top skills for remote Data Analyst and Business Analyst roles, filtering for those with at least 21 postings and available salary data, and orders them by the highest average salary and then by demand count.
 
 ```sql
@@ -226,7 +324,8 @@ FROM job_postings_fact
     INNER JOIN skills_job_dim ON job_postings_fact. job_id = skills_job_dim.job_id
     INNER JOIN skills_dim ON skills_job_dim.skill_id = skills_dim.skill_id
 WHERE
-    job_title_short = 'Data Analyst'
+    (job_title_short = 'Data Analyst' OR    
+    job_title_short = 'Business Analyst') 
     AND salary_year_avg IS NOT NULL
     AND job_work_from_home = True
 GROUP BY
@@ -235,7 +334,7 @@ HAVING
     COUNT(skills_job_dim.job_id) > 20
 ORDER BY
     avg_salary DESC,
-    demand_count DESC  
+    demand_count DESC
 ```
 Here's a breakdown and recommendation based on your SQL query and results:
 
@@ -259,7 +358,7 @@ The results provide a prioritized list of skills based on their market value and
 
 This project was a comprehensive exercise that significantly reinforced several key technical and analytical skills:
 
-* **Advanced SQL and Analytical Querying:** I gained practical experience using **Common Table Expressions (CTEs)** to structure and solve multi-step analytical problems efficiently (e.g., Query 5). This improved the readability and maintenance of complex queries.
+* **Advanced SQL and Analytical Querying:** I gained practical experience using **Common Table Expressions (CTEs)** to structure and solve multi-step analytical problems efficiently. This improved the readability and maintenance of complex queries.
 * **End-to-End Workflow:** I successfully implemented an end-to-end data analysis workflow, from data extraction and storage in **PostgreSQL/SQLite** to query development in **VS Code**, and final presentation via **GitHub** and Markdown.
 * **Market-Specific Data Insights:** The analysis provided concrete, actionable insights into the Data Analyst job market, confirming the high **Return on Investment (ROI)** for mastering skills like **Python** and advanced **SQL**, and highlighting the salary premium associated with **Cloud technologies** and Data Engineering skills.
 * **Version Control Mastery:** I utilized **Git and GitHub** extensively for tracking project iterations, managing code changes, and ensuring the project's evolution was properly documented and ready for collaboration.
@@ -272,14 +371,15 @@ The analysis successfully leveraged SQL to transform raw job posting data into a
 
 | Query | Insight |
 | :--- | :--- |
-| **1) Top-Paying Jobs** | **Seniority and Niche Specialization** are key to high compensation. The highest remote salaries are generally found in specific, high-level roles with clearly defined responsibilities. |
-| **2) Skills for Top Jobs** | **Advanced skills**—particularly **Python**, **cloud platforms**, and deep **SQL** knowledge—are non-negotiable for securing top-tier salaries. |
-| **3) Most In-Demand Skills** | **SQL** remains the undisputed foundational skill, followed closely by visualization tools and basic programming, indicating the core requirements for entry and mid-level roles. |
-| **4) Skills vs. Higher Salaries** | Skills related to **Data Engineering** and **Big Data tools** (like Spark or Cloud services) command the highest average salaries, suggesting that cross-functional knowledge is highly rewarded. |
-| **5) Most Optimal Skills** | **Python** and advanced **SQL** offer the **best return on investment (ROI)**, balancing high demand across the market with significantly above-average salaries. |
+| **Salary Cleaning & Risk Ratio** | Standardizing salaries showed that some skills offer high pay with low variance. Tools like SSRS and C# had the most stable salary profiles. |
+| **Top-Paying Jobs** | The highest salaries were mostly senior or director-level roles, with a few extreme outliers. Remote top-paying positions consistently exceeded $180K. |
+| **Skills in Top-Paying Roles** | SQL, Python, cloud tools, and BI platforms appeared in almost every high-paying job. |
+| **Most In-Demand Skills** | SQL, Excel, Python, Tableau, and Power BI dominate job postings, confirming them as essential baseline skills. |
+| **Skills Based on Salary** | Niche technologies (PySpark, Databricks, Bitbucket, Couchbase) produced the highest average salaries. |
+| **Optimal Skills** | Snowflake, SQL, and Python stood out when combining high salary and strong demand. |
 
 ---
 
 ### **2. Closing Thoughts**
 
-This project successfully provided **me** with a **data-driven roadmap** for my own career progression in data analysis. By systematically identifying the convergence of demand and salary, **I learned** that the optimal strategy is clear: **I must master the fundamentals (SQL) and strategically specialize in high-value programming or cloud technologies (Python and AWS/Azure)**. This approach will ensure my maximum marketability and maximize my earning potential in the competitive and flexible remote job landscape.
+This project helped me view the **Data Analyst** job market more analytically. Salary alone doesn’t show the full picture—stability, demand, and niche specialization all matter. The **SQL** queries provided a clear way to evaluate which skills offer both strong earning potential and practical job opportunities. Overall, the analysis gives a data-driven roadmap for deciding what skills are worth learning next.
